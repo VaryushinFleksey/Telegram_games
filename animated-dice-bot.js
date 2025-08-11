@@ -1,8 +1,22 @@
 const TelegramBot = require('node-telegram-bot-api');
-require('dotenv').config({ path: './config.env' });
+
+// Загружаем токен с fallback
+let token;
+try {
+    require('dotenv').config({ path: './config.env' });
+    token = process.env.BOT_TOKEN;
+} catch (error) {
+    console.log('Ошибка загрузки config.env, используем fallback токен');
+}
+
+// Fallback токен если переменная окружения не найдена
+if (!token) {
+    token = '8363673284:AAEobjKfon__9QaKLj9Rc5FoBW_aFXtoGTM';
+    console.log('Используется fallback токен бота');
+}
 
 // Создаем экземпляр бота
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(token, { polling: true });
 
 // Устанавливаем команды для отображения в меню Telegram
 bot.setMyCommands([
