@@ -25,6 +25,7 @@ bot.setMyCommands([
     { command: 'roll', description: '⚡ Быстрый бросок кубика' },
     { command: 'daily', description: '📅 Оставшиеся попытки на сегодня' },
     { command: 'stats', description: '📊 Статистика всех игроков в чате' },
+    { command: 'toxic', description: '🎭 Выбрать токсика дня' },
     { command: 'commands', description: 'ℹ️ Показать все доступные команды' },
     { command: 'help', description: '❓ Справка по игре' }
 ]);
@@ -90,15 +91,8 @@ async function selectRandomToxic(chatId) {
 
         if (memberCount > 0) {
             // Выбираем случайного участника из всех
-            const randomIndex = Math.floor(Math.random() * memberCount);
-            const chatMember = await bot.getChatMember(chatId, randomIndex);
-
-            if (chatMember && chatMember.user) {
-                return {
-                    username: chatMember.user.username || chatMember.user.first_name || 'Неизвестный игрок',
-                    userId: chatMember.user.id
-                };
-            }
+            // API getChatMember не работает с индексами, поэтому используем fallback
+            console.log(`В чате ${memberCount} участников, но API не может их получить по индексу`);
         }
 
         // Fallback на старую логику если API не сработал
@@ -110,11 +104,8 @@ async function selectRandomToxic(chatId) {
             return users[randomIndex];
         }
 
-        // Если нет участников в статистике, создаем фиктивного участника
-        return {
-            username: 'Случайный участник чата',
-            userId: Math.floor(Math.random() * 1000000)
-        };
+        // Если нет участников в статистике, возвращаем null
+        return null;
 
     } catch (error) {
         console.log('Ошибка получения участников чата:', error.message);
@@ -128,11 +119,8 @@ async function selectRandomToxic(chatId) {
             return users[randomIndex];
         }
 
-        // Если нет участников в статистике, создаем фиктивного участника
-        return {
-            username: 'Случайный участник чата',
-            userId: Math.floor(Math.random() * 1000000)
-        };
+        // Если нет участников в статистике, возвращаем null
+        return null;
     }
 }
 
@@ -615,11 +603,10 @@ bot.onText(/\/toxic/, async (msg) => {
         // Выбираем токсика
         const toxicUser = await selectRandomToxic(chatId);
 
-        // Убираем проверку - теперь функция всегда возвращает участника
-        // if (!toxicUser) {
-        //     bot.sendMessage(chatId, '❌ **Нет участников для выбора!**\n\n👥 Попробуйте позже или используйте другие команды бота');
-        //     return;
-        // }
+        if (!toxicUser) {
+            bot.sendMessage(chatId, '❌ **Нет участников для выбора!**\n\n👥 Попробуйте позже или используйте другие команды бота');
+            return;
+        }
 
         // Сохраняем результат
         const toxic = getToxicStats(chatId);
