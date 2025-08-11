@@ -87,12 +87,14 @@ function selectRandomToxic(chatId) {
     const chat = getChatStats(chatId);
     const users = Array.from(chat.users.values());
 
-    if (users.length < 2) {
-        return null; // Нужно минимум 2 участника
+    // Убираем проверку на количество участников - команда работает в любом чате
+    if (users.length > 0) {
+        const randomIndex = Math.floor(Math.random() * users.length);
+        return users[randomIndex];
     }
 
-    const randomIndex = Math.floor(Math.random() * users.length);
-    return users[randomIndex];
+    // Если нет участников - возвращаем null
+    return null;
 }
 
 // Функция для проверки лимита бросков в сутки
@@ -575,7 +577,7 @@ bot.onText(/\/toxic/, (msg) => {
         const toxicUser = selectRandomToxic(chatId);
 
         if (!toxicUser) {
-            bot.sendMessage(chatId, '❌ **Недостаточно участников!**\n\n👥 Нужно минимум 2 человека в чате\n🎯 Добавьте друзей и попробуйте снова');
+            bot.sendMessage(chatId, '❌ **Нет участников для выбора!**\n\n👥 Сначала кто-то должен использовать команды бота\n🎯 Попробуйте /dice или /roll, а потом /toxic');
             return;
         }
 
