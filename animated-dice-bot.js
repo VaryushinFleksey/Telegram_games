@@ -83,18 +83,48 @@ function canRunToxicToday(chatId) {
 }
 
 // Функция для выбора случайного токсика
-function selectRandomToxic(chatId) {
-    const chat = getChatStats(chatId);
-    const users = Array.from(chat.users.values());
+async function selectRandomToxic(chatId) {
+    try {
+        // Получаем количество участников в чате
+        const memberCount = await bot.getChatMembersCount(chatId);
 
-    // Убираем проверку на количество участников - команда работает в любом чате
-    if (users.length > 0) {
-        const randomIndex = Math.floor(Math.random() * users.length);
-        return users[randomIndex];
+        if (memberCount > 0) {
+            // Выбираем случайного участника из всех
+            const randomIndex = Math.floor(Math.random() * memberCount);
+            const chatMember = await bot.getChatMember(chatId, randomIndex);
+
+            if (chatMember && chatMember.user) {
+                return {
+                    username: chatMember.user.username || chatMember.user.first_name || 'Неизвестный игрок',
+                    userId: chatMember.user.id
+                };
+            }
+        }
+
+        // Fallback на старую логику если API не сработал
+        const chat = getChatStats(chatId);
+        const users = Array.from(chat.users.values());
+
+        if (users.length > 0) {
+            const randomIndex = Math.floor(Math.random() * users.length);
+            return users[randomIndex];
+        }
+
+        return null;
+    } catch (error) {
+        console.log('Ошибка получения участников чата:', error.message);
+
+        // Fallback на старую логику при ошибке
+        const chat = getChatStats(chatId);
+        const users = Array.from(chat.users.values());
+
+        if (users.length > 0) {
+            const randomIndex = Math.floor(Math.random() * users.length);
+            return users[randomIndex];
+        }
+
+        return null;
     }
-
-    // Если нет участников - возвращаем null
-    return null;
 }
 
 // Функция для проверки лимита бросков в сутки
@@ -567,17 +597,17 @@ bot.onText(/\/stats/, (msg) => {
 
 
 // Обработчик команды /toxic (выбрать токсика дня)
-bot.onText(/\/toxic/, (msg) => {
+bot.onText(/\/toxic/, async (msg) => {
     const chatId = msg.chat.id;
     const today = new Date().toDateString();
 
     // Проверяем, можно ли запустить сегодня
     if (canRunToxicToday(chatId)) {
         // Выбираем токсика
-        const toxicUser = selectRandomToxic(chatId);
+        const toxicUser = await selectRandomToxic(chatId);
 
         if (!toxicUser) {
-            bot.sendMessage(chatId, '❌ **Нет участников для выбора!**\n\n👥 Сначала кто-то должен использовать команды бота\n🎯 Попробуйте /dice или /roll, а потом /toxic');
+            bot.sendMessage(chatId, '❌ **Нет участников для выбора!**\n\n👥 Попробуйте позже или используйте другие команды бота');
             return;
         }
 
