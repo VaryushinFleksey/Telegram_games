@@ -19,6 +19,10 @@ bot.setMyCommands([
 // Структура: Map<chatId, Map<userId, userStats>>
 const chatStats = new Map();
 
+// Хранилище для токсиков по чатам
+// Структура: Map<chatId, { lastToxicDate, toxicUser, lastRunDate }>
+const toxicStats = new Map();
+
 // Функция для получения статистики чата
 function getChatStats(chatId) {
     if (!chatStats.has(chatId)) {
@@ -43,6 +47,38 @@ function getUserStats(chatId, userId) {
         return null;
     }
     return chat.users.get(userId);
+}
+
+// Функция для получения статистики токсиков чата
+function getToxicStats(chatId) {
+    if (!toxicStats.has(chatId)) {
+        toxicStats.set(chatId, {
+            lastToxicDate: null,
+            toxicUser: null,
+            lastRunDate: null
+        });
+    }
+    return toxicStats.get(chatId);
+}
+
+// Функция для проверки, можно ли запустить выбор токсика сегодня
+function canRunToxicToday(chatId) {
+    const toxic = getToxicStats(chatId);
+    const today = new Date().toDateString();
+    return !toxic.lastRunDate || toxic.lastRunDate !== today;
+}
+
+// Функция для выбора случайного токсика
+function selectRandomToxic(chatId) {
+    const chat = getChatStats(chatId);
+    const users = Array.from(chat.users.values());
+
+    if (users.length < 2) {
+        return null; // Нужно минимум 2 участника
+    }
+
+    const randomIndex = Math.floor(Math.random() * users.length);
+    return users[randomIndex];
 }
 
 // Функция для проверки лимита бросков в сутки
@@ -514,6 +550,40 @@ bot.onText(/\/stats/, (msg) => {
 
 
 
+// Обработчик команды /toxic (выбрать токсика дня)
+bot.onText(/\/toxic/, (msg) => {
+    const chatId = msg.chat.id;
+    const today = new Date().toDateString();
+
+    // Проверяем, можно ли запустить сегодня
+    if (canRunToxicToday(chatId)) {
+        // Выбираем токсика
+        const toxicUser = selectRandomToxic(chatId);
+
+        if (!toxicUser) {
+            bot.sendMessage(chatId, '❌ **Недостаточно участников!**\n\n👥 Нужно минимум 2 человека в чате\n🎯 Добавьте друзей и попробуйте снова');
+            return;
+        }
+
+        // Сохраняем результат
+        const toxic = getToxicStats(chatId);
+        toxic.lastToxicDate = today;
+        toxic.toxicUser = toxicUser;
+        toxic.lastRunDate = today;
+
+        // Показываем результат
+        const toxicMessage = `🎭 **Токсик в чате сегодня:**\n\n👤 **@${toxicUser.username}**\n📅 Действует до: завтра в 00:00`;
+
+        bot.sendMessage(chatId, toxicMessage);
+    } else {
+        // Показываем, что уже запущено
+        const toxic = getToxicStats(chatId);
+        const alreadyMessage = `🎭 **Команда уже запущена сегодня!**\n\n👤 Токсик дня: **@${toxic.toxicUser.username}**\n📅 Следующий выбор: завтра в 00:00`;
+
+        bot.sendMessage(chatId, alreadyMessage);
+    }
+});
+
 // Обработчик команды /commands (показать доступные команды)
 bot.onText(/\/commands/, (msg) => {
     const chatId = msg.chat.id;
@@ -525,6 +595,8 @@ bot.onText(/\/commands/, (msg) => {
     commandsMessage += `/daily - Оставшиеся попытки на сегодня\n\n`;
     commandsMessage += `📊 **Статистика:**\n`;
     commandsMessage += `/stats - Статистика всех игроков в чате\n\n`;
+    commandsMessage += `🎭 **Развлечения:**\n`;
+    commandsMessage += `/toxic - Выбрать токсика дня\n\n`;
     commandsMessage += `ℹ️ **Справка:**\n`;
     commandsMessage += `/start - Начать игру\n`;
     commandsMessage += `/help - Показать справку\n`;
@@ -580,4 +652,4 @@ console.log('🎲 Telegram бот для игры в кости в группо�
 console.log('Используйте Ctrl+C для остановки.');
 console.log('📊 Статистика всех игроков активна');
 console.log('🎪 Анимации и эффекты кручения активны');
-console.log('🎯 Доступные команды: /dice, /roll, /daily, /stats, /commands');
+console.log('🎯 Доступные команды: /dice, /roll, /daily, /stats, /commands, /toxic');
